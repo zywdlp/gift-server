@@ -8,7 +8,10 @@ import { CardSecretQueryDto } from "./dto/card-secret-query.dto";
 import { GenerateCardSecretDto } from "./dto/generate-card-secret.dto";
 import { CardBatch } from "./entities/card-batch.entity";
 import { GiftCard } from "./entities/gift-card.entity";
+import { GiftCardQueryDto } from "./dto/gift-card-query.dto";
+import { BindGiftCardsDto } from "./dto/bind-gift-cards.dto";
 import { SysUser } from "@/system/user/entities/sys-user.entity";
+import { Product } from "@/product/entities/product.entity";
 
 @Injectable()
 export class CardSecretService {
@@ -81,6 +84,80 @@ export class CardSecretService {
       })),
       page: { pageNum, pageSize, total },
     };
+  }
+
+  async getGiftCardPage(query: GiftCardQueryDto) {
+    const builder = this.cardRepository
+      .createQueryBuilder("card")
+      .leftJoin(CardBatch, "batch", "batch.id = card.batchId AND batch.isDeleted = 0")
+      .leftJoin(Product, "product", "product.id = card.productId AND product.isDeleted = 0")
+      .where("card.isDeleted = 0")
+      .select([
+        "card.id", "card.cardNo", "card.batchId", "card.productId", "card.status",
+        "card.expiryAt", "card.boundAt", "card.bindRemark", "card.createTime",
+      ])
+      .addSelect("batch.batchNo", "batchNo")
+      .addSelect("product.name", "productName");
+    if (query.cardNo?.trim()) builder.andWhere("card.cardNo LIKE :cardNo", { cardNo: `%${query.cardNo.trim()}%` });
+    if (query.batchNo?.trim()) builder.andWhere("batch.batchNo LIKE :batchNo", { batchNo: `%${query.batchNo.trim()}%` });
+    if (query.productName?.trim()) builder.andWhere("product.name LIKE :productName", { productName: `%${query.productName.trim()}%` });
+    if (query.status) builder.andWhere("card.status = :status", { status: query.status });
+    const total = await builder.getCount();
+    const result = await builder
+      .orderBy("card.createTime", "DESC")
+      .skip((query.pageNum - 1) * query.pageSize)
+      .take(query.pageSize)
+      .getRawAndEntities();
+    return {
+      data: result.entities.map((card, index) => ({
+        ...card,
+        batchNo: result.raw[index].batchNo || "-",
+        productName: result.raw[index].productName || "-",
+      })),
+      page: { pageNum: query.pageNum, pageSize: query.pageSize, total },
+    };
+  }
+
+  async bindGiftCards(dto: BindGiftCardsDto) {
+    const cardIds = [...new Set(dto.cardIds)];
+    if (cardIds.length !== dto.cardIds.length) throw new BusinessException("不能重复选择礼品卡");
+    const expiryAt = new Date(dto.expiryAt);
+    if (Number.isNaN(expiryAt.getTime()) || expiryAt <= new Date()) throw new BusinessException("有效期必须晚于当前时间");
+    return await this.dataSource.transaction(async (manager) => {
+      const product = await manager.findOne(Product, { where: { id: dto.productId, isDeleted: 0 } });
+      if (!product) throw new BusinessException("商品不存在或已删除");
+      const cards = await manager
+        .createQueryBuilder(GiftCard, "card")
+        .setLock("pessimistic_write")
+        .where("card.id IN (:...cardIds)", { cardIds })
+        .andWhere("card.isDeleted = 0")
+        .getMany();
+      if (cards.length !== cardIds.length) throw new BusinessException("存在无效的礼品卡，请刷新后重试");
+      if (cards.some((card) => card.status !== "UNBOUND" || card.productId)) {
+        throw new BusinessException("仅未绑定商品的礼品卡可以绑定");
+      }
+      const now = new Date();
+      const productSnapshot = {
+        name: product.name,
+        shortName: product.shortName || null,
+        coverImage: product.coverImage || null,
+        detailImages: product.detailImages || [],
+        referenceValue: product.referenceValue || null,
+        description: product.description || null,
+        deliveryScope: product.deliveryScope || null,
+        afterSales: product.afterSales || null,
+      };
+      cards.forEach((card) => Object.assign(card, {
+        productId: product.id,
+        productSnapshot,
+        status: "ACTIVE" as const,
+        expiryAt,
+        boundAt: now,
+        bindRemark: dto.remark?.trim() || null,
+      }));
+      await manager.save(GiftCard, cards, { chunk: 1000 });
+      return { count: cards.length };
+    });
   }
 
   async getCardsForExport(batchId: string) {

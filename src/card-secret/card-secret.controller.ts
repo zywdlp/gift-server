@@ -8,6 +8,8 @@ import { LogModuleValue } from "@/common/enums/log-module.enum";
 import { CardSecretService } from "./card-secret.service";
 import { CardSecretQueryDto } from "./dto/card-secret-query.dto";
 import { GenerateCardSecretDto } from "./dto/generate-card-secret.dto";
+import { GiftCardQueryDto } from "./dto/gift-card-query.dto";
+import { BindGiftCardsDto } from "./dto/bind-gift-cards.dto";
 
 @ApiTags("卡密管理")
 @Controller("card-secrets")
@@ -22,6 +24,15 @@ export class CardSecretController {
   @ApiOperation({ summary: "生成卡密" })
   @Log(LogModuleValue.OTHER, ActionTypeValue.INSERT, "卡密管理-生成卡密")
   generate(@Body() dto: GenerateCardSecretDto) { return this.cardSecretService.generate(dto); }
+
+  @Get("cards")
+  @ApiOperation({ summary: "礼品卡分页列表" })
+  getGiftCardPage(@Query() query: GiftCardQueryDto) { return this.cardSecretService.getGiftCardPage(query); }
+
+  @Post("cards/bind")
+  @ApiOperation({ summary: "批量绑定商品" })
+  @Log(LogModuleValue.OTHER, ActionTypeValue.UPDATE, "礼品卡管理-绑定商品")
+  bindGiftCards(@Body() dto: BindGiftCardsDto) { return this.cardSecretService.bindGiftCards(dto); }
 
   @Get(":id/cards")
   @ApiOperation({ summary: "批次卡密列表" })

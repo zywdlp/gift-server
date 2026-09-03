@@ -9,6 +9,7 @@ import { getUploadRoot, UPLOAD_URL_PREFIX } from "@/common/utils/upload-path.uti
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { Product } from "./entities/product.entity";
+import { GiftCard } from "@/card-secret/entities/gift-card.entity";
 
 interface UploadedImage {
   mimetype: string;
@@ -28,7 +29,9 @@ export class ProductService {
 
   constructor(
     @InjectRepository(Product)
-    private readonly productRepository: Repository<Product>
+    private readonly productRepository: Repository<Product>,
+    @InjectRepository(GiftCard)
+    private readonly giftCardRepository: Repository<GiftCard>
   ) {}
 
   async getPage(pageNum = 1, pageSize = 10, keywords?: string) {
@@ -69,8 +72,9 @@ export class ProductService {
 
   async delete(id: string) {
     const product = await this.findActiveProduct(id);
+    const hasBoundCards = await this.giftCardRepository.exists({ where: { productId: id, isDeleted: 0 } });
+    if (hasBoundCards) throw new BusinessException("该商品已绑定礼品卡，不能删除");
     const imageUrls = this.getImageUrls(product);
-    // 后续权益方案、卡券、订单模块接入后，在这里统一校验是否已被引用。
     product.isDeleted = 1;
     await this.productRepository.save(product);
     await this.removeUnusedImages(imageUrls);

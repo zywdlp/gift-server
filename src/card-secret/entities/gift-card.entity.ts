@@ -24,4 +24,22 @@ export class GiftCard extends BaseEntity {
   @Column({ name: "qr_token_ciphertext", type: "text", comment: "二维码令牌密文" })
   qrTokenCiphertext: string;
 
+  @Column({ name: "product_id", type: "bigint", nullable: true, comment: "绑定商品ID" })
+  productId?: string | null;
+
+  @Column({ name: "product_snapshot", type: "json", nullable: true, comment: "绑定时的商品快照" })
+  productSnapshot?: Record<string, unknown> | null;
+
+  @Column({ length: 20, default: "UNBOUND", comment: "卡片状态：UNBOUND未绑定，ACTIVE可兑换" })
+  status: "UNBOUND" | "ACTIVE";
+
+  @Column({ name: "expiry_at", type: "datetime", nullable: true, comment: "兑换截止时间" })
+  expiryAt?: Date | null;
+
+  @Column({ name: "bound_at", type: "datetime", nullable: true, comment: "商品绑定时间" })
+  boundAt?: Date | null;
+
+  @Column({ name: "bind_remark", length: 255, nullable: true, comment: "商品绑定备注" })
+  bindRemark?: string | null;
+
 }
