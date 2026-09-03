@@ -1,7 +1,7 @@
 import { Type } from "class-transformer";
 import { IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from "class-validator";
 
-export class GenerateCardBatchDto {
+export class GenerateCardSecretDto {
   @IsUUID()
   requestId: string;
 

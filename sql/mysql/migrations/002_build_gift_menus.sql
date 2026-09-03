@@ -9,7 +9,7 @@ DELETE FROM `sys_menu` WHERE `id` IN (102, 103, 104, 105);
 
 INSERT INTO `sys_menu` (`id`, `parent_id`, `tree_path`, `name`, `type`, `route_name`, `route_path`, `component`, `perm`, `always_show`, `keep_alive`, `visible`, `sort`, `icon`, `redirect`, `create_time`, `update_time`, `params`) VALUES
   (100, 0, '0', '商品管理', 'M', 'GiftProduct', '/products', 'gift/product/index', NULL, 0, 1, 1, 1, 'gift', NULL, NOW(), NOW(), NULL),
-  (101, 0, '0', '卡密管理', 'M', 'GiftBatch', '/card-secrets', 'gift/batch/index', NULL, 0, 1, 1, 2, 'table', NULL, NOW(), NOW(), NULL)
+  (101, 0, '0', '卡密管理', 'M', 'GiftCardSecret', '/card-secrets', 'gift/card-secret/index', NULL, 0, 1, 1, 2, 'table', NULL, NOW(), NOW(), NULL)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`), `tree_path` = VALUES(`tree_path`), `name` = VALUES(`name`),
   `type` = VALUES(`type`), `route_name` = VALUES(`route_name`), `route_path` = VALUES(`route_path`),

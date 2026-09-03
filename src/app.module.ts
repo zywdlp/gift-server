@@ -18,7 +18,7 @@ import { RoleModule } from "./system/role/role.module"; // 角色模块（提供
 import { DictModule } from "./system/dict/dict.module"; // 系统字典模块
 import { LogModule } from "./system/log/log.module";
 import { ProductModule } from "./product/product.module";
-import { CardBatchModule } from "./card-batch/card-batch.module";
+import { CardSecretModule } from "./card-secret/card-secret.module";
 
 import { LoggerMiddleware } from "./common/middleware/logger.middleware";
 import { RequestContextMiddleware } from "./common/middleware/request-context.middleware";
@@ -76,7 +76,7 @@ const envPath = `.env.${process.env.NODE_ENV || "dev"}`;
     DictModule,
     LogModule,
     ProductModule,
-    CardBatchModule,
+    CardSecretModule,
   ],
   controllers: [],
   providers: [

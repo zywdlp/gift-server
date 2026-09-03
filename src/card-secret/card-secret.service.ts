@@ -4,14 +4,14 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, In, Repository } from "typeorm";
 import { BusinessException } from "@/common/exceptions/business.exception";
 import { decryptCardSecret, encryptCardSecret, generatePin, generateQrToken, hashCardSecret } from "@/common/utils/card-secret.util";
-import { CardBatchQueryDto } from "./dto/card-batch-query.dto";
-import { GenerateCardBatchDto } from "./dto/generate-card-batch.dto";
+import { CardSecretQueryDto } from "./dto/card-secret-query.dto";
+import { GenerateCardSecretDto } from "./dto/generate-card-secret.dto";
 import { CardBatch } from "./entities/card-batch.entity";
 import { GiftCard } from "./entities/gift-card.entity";
 import { SysUser } from "@/system/user/entities/sys-user.entity";
 
 @Injectable()
-export class CardBatchService {
+export class CardSecretService {
   constructor(
     @InjectRepository(CardBatch) private readonly batchRepository: Repository<CardBatch>,
     @InjectRepository(GiftCard) private readonly cardRepository: Repository<GiftCard>,
@@ -19,7 +19,7 @@ export class CardBatchService {
     private readonly dataSource: DataSource
   ) {}
 
-  async getPage(query: CardBatchQueryDto) {
+  async getPage(query: CardSecretQueryDto) {
     const builder = this.batchRepository.createQueryBuilder("batch").where("batch.isDeleted = 0");
     if (query.keywords?.trim()) builder.andWhere("batch.batchNo LIKE :keywords", { keywords: `%${query.keywords.trim()}%` });
     const [data, total] = await builder
@@ -38,7 +38,7 @@ export class CardBatchService {
     };
   }
 
-  async generate(dto: GenerateCardBatchDto) {
+  async generate(dto: GenerateCardSecretDto) {
     const existing = await this.batchRepository.findOne({ where: { requestId: dto.requestId, isDeleted: 0 } });
     if (existing) return existing;
 
