@@ -26,9 +26,6 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import type { CurrentUserInfo } from "../../common/interfaces/current-user.interface";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { PasswordChangeDto } from "./dto/password-change.dto";
-import { MobileUpdateDto } from "./dto/mobile-update.dto";
-import { EmailUpdateDto } from "./dto/email-update.dto";
-import { PasswordVerifyDto } from "./dto/password-verify.dto";
 import { UserProfileDto } from "./dto/user-profile.dto";
 import { Permissions } from "../../common/decorators/auth.decorator";
 import { DataPermission } from "../../common/decorators/data-permission.decorator";
@@ -169,43 +166,6 @@ export class UserController {
     @Body() data: PasswordChangeDto
   ) {
     return await this.userService.changeCurrentUserPassword(userId, data);
-  }
-
-  @ApiOperation({ summary: "发送短信验证码（绑定或更换手机号）" })
-  @Post("mobile/code")
-  async sendMobileCode(@Query("mobile") mobile: string) {
-    return await this.userService.sendMobileCode(mobile);
-  }
-
-  @ApiOperation({ summary: "绑定或更换手机号" })
-  @Put("mobile")
-  async bindOrChangeMobile(@CurrentUser("userId") userId: string, @Body() data: MobileUpdateDto) {
-    return await this.userService.bindOrChangeMobile(userId, data);
-  }
-
-  @ApiOperation({ summary: "解绑手机号" })
-  @Delete("mobile")
-  async unbindMobile(@CurrentUser("userId") userId: string, @Body() data: PasswordVerifyDto) {
-    return await this.userService.unbindMobile(userId, data.password);
-  }
-
-  @ApiOperation({ summary: "发送邮箱验证码（绑定或更换邮箱）" })
-  @Post("email/code")
-  async sendEmailCode(@Query("email") email: string) {
-    await this.userService.sendEmailCode(email);
-    return true;
-  }
-
-  @ApiOperation({ summary: "绑定或更换邮箱" })
-  @Put("email")
-  async bindOrChangeEmail(@CurrentUser("userId") userId: string, @Body() data: EmailUpdateDto) {
-    return await this.userService.bindOrChangeEmail(userId, data);
-  }
-
-  @ApiOperation({ summary: "解绑邮箱" })
-  @Delete("email")
-  async unbindEmail(@CurrentUser("userId") userId: string, @Body() data: PasswordVerifyDto) {
-    return await this.userService.unbindEmail(userId, data.password);
   }
 
   @ApiOperation({ summary: "导入用户" })

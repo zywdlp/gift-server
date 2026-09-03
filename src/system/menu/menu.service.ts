@@ -1,11 +1,10 @@
-﻿import { forwardRef, Inject, Injectable } from "@nestjs/common";
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { CreateMenuDto } from "./dto/create-menu.dto";
 import { UpdateMenuDto } from "./dto/update-menu.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In, Not } from "typeorm";
 import { SysMenu } from "./entities/sys-menu.entity";
 import { UserService } from "../user/user.service";
-import { RolePermService } from "../role/role-permission.service";
 import { Route } from "./interfaces/menu.interface";
 
 /**
@@ -17,9 +16,7 @@ export class MenuService {
     @InjectRepository(SysMenu)
     private menuRepository: Repository<SysMenu>,
     @Inject(forwardRef(() => UserService))
-    private readonly userService: UserService,
-    @Inject(forwardRef(() => RolePermService))
-    private readonly rolePermService: RolePermService
+    private readonly userService: UserService
   ) {}
 
   async findAll() {
@@ -323,9 +320,6 @@ export class MenuService {
       await this.updateChildrenTreePath(idStr, newTreePath);
     }
 
-    // 刷新角色权限缓存
-    await this.rolePermService.refreshAllRolePermsCache();
-
     return true;
   }
 
@@ -372,9 +366,6 @@ export class MenuService {
 
     // 批量删除
     await this.menuRepository.delete(Array.from(idsToDelete));
-
-    // 刷新角色权限缓存
-    await this.rolePermService.refreshAllRolePermsCache();
 
     return true;
   }

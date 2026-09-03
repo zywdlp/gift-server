@@ -4,11 +4,9 @@ import { DictService } from "./dict.service";
 import { DictController } from "./dict.controller";
 import { SysDict } from "./entities/sys-dict.entity";
 import { SysDictItem } from "./entities/sys-dict-item.entity";
-import { RedisSharedModule } from "../../common/redis/redis.module";
-import { SseModule } from "../../message/sse.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SysDict, SysDictItem]), RedisSharedModule, SseModule],
+  imports: [TypeOrmModule.forFeature([SysDict, SysDictItem])],
   controllers: [DictController],
   providers: [DictService],
   exports: [DictService],

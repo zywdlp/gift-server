@@ -4,7 +4,6 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe, HttpStatus } from "@nestjs/common";
 import { ResponseInterceptor } from "./common/interceptors/response.interceptor";
 import { ConfigService } from "@nestjs/config";
-import * as session from "express-session";
 import type { ValidationError } from "class-validator";
 import { BusinessException } from "./common/exceptions/business.exception";
 import { ErrorCode } from "./common/enums/error-code.enum";
@@ -73,8 +72,8 @@ async function bootstrap() {
 
   // Swagger 配置
   const config = new DocumentBuilder()
-    .setTitle("youlai-nest")
-    .setDescription(`youlai 全家桶（Node/Nest 11）权限管理后台接口文档`)
+    .setTitle("gift-server")
+    .setDescription(`礼品管理后台接口文档`)
     .setVersion("1.0")
     .addBearerAuth()
     .build();
@@ -85,18 +84,6 @@ async function bootstrap() {
       tagsSorter: "alpha",
     },
   });
-
-  // Session 配置
-  app.use(
-    session({
-      secret: configService.getOrThrow<string>("jwt.secretKey"),
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 7天
-      },
-    })
-  );
 
   // 端口通过环境变量 SERVER_PORT 配置（默认 8000）
   const portRaw = configService.get("APP_PORT") ?? configService.get("SERVER_PORT") ?? 8000;

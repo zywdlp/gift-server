@@ -1,5 +1,4 @@
 ﻿import type { Request, Response } from "express";
-import type { IncomingHttpHeaders } from "http";
 
 interface RequestLogContext {
   url: string;
@@ -9,7 +8,6 @@ interface RequestLogContext {
   referrer?: string;
   params: Record<string, unknown>;
   query: Record<string, unknown>;
-  headers: IncomingHttpHeaders;
   body: Record<string, unknown>;
 }
 
@@ -28,9 +26,8 @@ export class LoggerUtils {
       userAgent: req.headers["user-agent"],
       referrer: req.headers.referer,
       params: req.params as Record<string, unknown>,
-      query: req.query as Record<string, unknown>,
-      headers: req.headers,
-      body: req.body as Record<string, unknown>,
+      query: this.redactSensitiveFields(req.query as Record<string, unknown>),
+      body: this.redactSensitiveFields(req.body as Record<string, unknown>),
     };
   }
 
@@ -45,6 +42,26 @@ export class LoggerUtils {
   static parseClientIP(req: Request): string {
     return (
       req.ip || req.socket?.remoteAddress || req.headers["x-forwarded-for"]?.toString() || "unknown"
+    );
+  }
+
+  private static redactSensitiveFields(input: Record<string, unknown>): Record<string, unknown> {
+    const sensitiveKeys = new Set([
+      "password",
+      "oldPassword",
+      "newPassword",
+      "confirmPassword",
+      "token",
+      "accessToken",
+      "refreshToken",
+      "authorization",
+    ]);
+
+    return Object.fromEntries(
+      Object.entries(input || {}).map(([key, value]) => [
+        key,
+        sensitiveKeys.has(key) ? "[REDACTED]" : value,
+      ])
     );
   }
 }

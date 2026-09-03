@@ -8,7 +8,6 @@ import { DictFormDto } from "./dto/create-dict.dto";
 import { UpdateDictDto } from "./dto/update-dict.dto";
 import { CreateDictItemDto } from "./dto/create-dict-item.dto";
 import { UpdateDictItemDto } from "./dto/update-dict-item.dto";
-import { SseService } from "../../message/sse.service";
 
 /**
  * 字典服务
@@ -19,8 +18,7 @@ export class DictService {
     @InjectRepository(SysDict)
     private readonly dictRepository: Repository<SysDict>,
     @InjectRepository(SysDictItem)
-    private readonly dictItemRepository: Repository<SysDictItem>,
-    private readonly sseService: SseService
+    private readonly dictItemRepository: Repository<SysDictItem>
   ) {}
 
   /**
@@ -91,7 +89,6 @@ export class DictService {
     });
 
     const saved = await this.dictRepository.save(dict);
-    this.sseService.sendDictChange(dictCode);
     return saved;
   }
 
@@ -133,7 +130,6 @@ export class DictService {
       ...(updateDictDto as any),
       updateBy: updateDictDto.updateBy?.toString(),
     });
-    this.sseService.sendDictChange(dict.dictCode);
     return true;
   }
 
@@ -156,7 +152,6 @@ export class DictService {
       updateTime: new Date(),
     });
 
-    this.sseService.sendDictChange(dict.dictCode);
     return true;
   }
 
@@ -257,8 +252,6 @@ export class DictService {
     });
 
     const savedItem = await this.dictItemRepository.save(dictItem);
-    this.sseService.sendDictChange(dictCode);
-
     return {
       id: savedItem.id,
       dictCode,
@@ -330,7 +323,6 @@ export class DictService {
       ...dto,
       updateBy: updateData.updateBy?.toString(),
     });
-    this.sseService.sendDictChange(dictItem.dictCode);
     return true;
   }
 
@@ -347,7 +339,6 @@ export class DictService {
     }
 
     await this.dictItemRepository.delete(id.toString());
-    this.sseService.sendDictChange(dictItem.dictCode);
     return true;
   }
 }

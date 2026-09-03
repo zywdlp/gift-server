@@ -1,9 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
-import { QrCodeAuthService } from "./qr-code-auth.service";
-import { WxMaAuthService } from "./wxma-auth.service";
-import { WxMaAuthController } from "./wxma-auth.controller";
 import { UserModule } from "../system/user/user.module";
 import { RoleModule } from "../system/role/role.module";
 import { LogModule } from "../system/log/log.module";
@@ -11,20 +8,19 @@ import { PassportModule } from "@nestjs/passport";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtStrategy } from "./strategies/jwt.strategy";
-import { RedisSharedModule } from "../common/redis/redis.module";
-import { RedisService } from "../common/redis/redis.service";
 import { ToolsService } from "../common/utils/captcha.util";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { SysUser } from "../system/user/entities/sys-user.entity";
-import { SysUserSocial } from "../system/user/entities/sys-user-social.entity";
+import { SysCaptcha } from "./entities/sys-captcha.entity";
+import { SysLoginAttempt } from "./entities/sys-login-attempt.entity";
+import { SysTokenBlacklist } from "./entities/sys-token-blacklist.entity";
 
 @Module({
   imports: [
     UserModule,
     RoleModule,
     LogModule,
-    RedisSharedModule,
-    TypeOrmModule.forFeature([SysUser, SysUserSocial]),
+    TypeOrmModule.forFeature([SysUser, SysCaptcha, SysLoginAttempt, SysTokenBlacklist]),
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -38,8 +34,8 @@ import { SysUserSocial } from "../system/user/entities/sys-user-social.entity";
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController, WxMaAuthController],
-  providers: [AuthService, QrCodeAuthService, WxMaAuthService, JwtStrategy, RedisService, ToolsService],
-  exports: [AuthService, WxMaAuthService],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy, ToolsService],
+  exports: [AuthService],
 })
 export class AuthModule {}

@@ -35,8 +35,6 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 .history
-.env.youlai
+.env*
+!.env.example
 
-# Docker 数据目录
-docker/*/data
-docker/*/config

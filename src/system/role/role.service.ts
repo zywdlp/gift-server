@@ -1,5 +1,4 @@
-import { forwardRef, Inject, Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Injectable } from "@nestjs/common";
 import { CreateRoleDto } from "./dto/create-role.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -7,11 +6,9 @@ import { Repository, In, Brackets } from "typeorm";
 import { SysRole } from "./entities/sys-role.entity";
 import { SysRoleMenu } from "./entities/sys-role-menu.entity";
 import { SysRoleDept } from "./entities/sys-role-dept.entity";
-import { RolePermService } from "./role-permission.service";
 import { BusinessException } from "../../common/exceptions/business.exception";
 import { SysUserRole } from "../user/entities/sys-user-role.entity";
 import { ROOT_ROLE_CODE } from "../../common/constants/role.constant";
-import { RedisService } from "../../common/redis/redis.service";
 import { RoleDataScope } from "../../common/models/role-data-scope.model";
 import { DataScopeEnum } from "../../common/enums/data-scope.enum";
 
@@ -28,44 +25,8 @@ export class RoleService {
     @InjectRepository(SysUserRole)
     private userRoleRepository: Repository<SysUserRole>,
     @InjectRepository(SysRoleDept)
-    private roleDeptRepository: Repository<SysRoleDept>,
-    @Inject(forwardRef(() => RolePermService))
-    private readonly rolePermService: RolePermService,
-    private readonly configService: ConfigService,
-    private readonly redisCacheService: RedisService
+    private roleDeptRepository: Repository<SysRoleDept>
   ) {}
-
-  private async invalidateUsersSessions(userIds: string[]): Promise<void> {
-    const ids = (userIds || []).map((v) => v?.toString()).filter(Boolean);
-    if (ids.length === 0) return;
-
-    const sessionType = this.configService.get<string>("SESSION_TYPE") || "jwt";
-    for (const userId of ids) {
-      const versionKey = `auth:user:token_version:${userId}`;
-      const currentVersion = await this.redisCacheService.get<number>(versionKey);
-      const nextVersion = (currentVersion ?? 0) + 1;
-      await this.redisCacheService.set(versionKey, nextVersion);
-      await this.redisCacheService.del(`auth:user:jwt_session:${userId}`);
-
-      if (sessionType === "redis-token") {
-        const accessKey = `auth:user:access:${userId}`;
-        const refreshKey = `auth:user:refresh:${userId}`;
-
-        const accessToken = await this.redisCacheService.get<string>(accessKey);
-        const refreshToken = await this.redisCacheService.get<string>(refreshKey);
-
-        if (accessToken) {
-          await this.redisCacheService.del(`auth:token:access:${accessToken}`);
-        }
-        if (refreshToken) {
-          await this.redisCacheService.del(`auth:token:refresh:${refreshToken}`);
-        }
-
-        await this.redisCacheService.del(accessKey);
-        await this.redisCacheService.del(refreshKey);
-      }
-    }
-  }
 
   async findRoleIdsByCodes(roleCodes: string[]): Promise<string[]> {
     const codes = (roleCodes || []).map((c) => (c ?? "").trim()).filter(Boolean);
@@ -156,12 +117,6 @@ export class RoleService {
 
     await this.roleRepository.save(entity);
 
-    // 数据权限发生变化时，失效该角色关联用户的登录态（JWT tokenVersion）
-    if (oldRole && oldRole.dataScope !== (entity as any).dataScope) {
-      const relations = await this.userRoleRepository.find({ where: { roleId: roleId } });
-      const userIds = relations.map((r) => r.userId?.toString()).filter(Boolean);
-      await this.invalidateUsersSessions(userIds);
-    }
     return true;
   }
 
@@ -315,18 +270,10 @@ export class RoleService {
   /**
    * 更新角色菜单
    *
-   * 更新后需要：
-   * 1. 刷新该角色的权限缓存
-   * 2. 使已登录用户的会话失效（触发重新加载权限）
+   * 更新后立即写入数据库，后续请求从数据库读取最新权限。
    */
   async updateMenus(roleId: string, menuIds: string[]) {
     const roleIdStr = roleId.toString();
-
-    // 获取角色编码（用于刷新权限缓存）
-    const role = await this.roleRepository.findOne({
-      where: { id: roleIdStr, isDeleted: 0 },
-      select: ["id", "code"],
-    });
 
     // 删除旧的菜单关联
     await this.roleMenuRepository.delete({ roleId: roleIdStr });
@@ -338,16 +285,6 @@ export class RoleService {
     }));
 
     const saved = await this.roleMenuRepository.save(roleMenus);
-
-    // 刷新角色权限缓存
-    if (role?.code) {
-      await this.rolePermService.refreshRolePermsCache(role.code);
-    }
-
-    // 使已登录用户的会话失效
-    const relations = await this.userRoleRepository.find({ where: { roleId: roleIdStr } });
-    const userIds = relations.map((r) => r.userId?.toString()).filter(Boolean);
-    await this.invalidateUsersSessions(userIds);
 
     return saved;
   }
@@ -388,9 +325,6 @@ export class RoleService {
 
       await this.roleMenuRepository.delete({ roleId });
       await this.roleRepository.update(roleId, { isDeleted: 1 });
-
-      // 刷新角色权限缓存（删除角色编码对应的缓存）
-      await this.rolePermService.refreshRolePermsCache(role.code);
     }
   }
 
@@ -493,11 +427,6 @@ export class RoleService {
       }));
       await this.roleDeptRepository.save(roleDepts);
     }
-
-    // 使相关用户的会话失效
-    const relations = await this.userRoleRepository.find({ where: { roleId: roleIdStr } });
-    const userIds = relations.map((r) => r.userId?.toString()).filter(Boolean);
-    await this.invalidateUsersSessions(userIds);
   }
 
   /**

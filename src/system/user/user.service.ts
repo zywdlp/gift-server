@@ -11,16 +11,12 @@ import { CurrentUserInfo } from "../../common/interfaces/current-user.interface"
 import { DEFAULT_PASSWORD } from "../../common/constants/system.constant";
 import { ROOT_ROLE_CODE } from "../../common/constants/role.constant";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, Not } from "typeorm";
-import { ConfigService } from "@nestjs/config";
-import { RedisService } from "../../common/redis/redis.service";
+import { Repository } from "typeorm";
 import { SysUser } from "./entities/sys-user.entity";
 import { SysUserRole } from "./entities/sys-user-role.entity";
 import * as bcrypt from "bcrypt";
 import { UserFormDto } from "./dto/user-form.dto";
 import type { PasswordChangeDto } from "./dto/password-change.dto";
-import type { MobileUpdateDto } from "./dto/mobile-update.dto";
-import type { EmailUpdateDto } from "./dto/email-update.dto";
 import type { UserProfileDto } from "./dto/user-profile.dto";
 import { ErrorCode } from "../../common/enums/error-code.enum";
 import * as XLSX from "xlsx";
@@ -42,9 +38,7 @@ export class UserService {
     @InjectRepository(SysUser)
     private userRepository: Repository<SysUser>,
     @InjectRepository(SysUserRole)
-    private userRoleRepository: Repository<SysUserRole>,
-    private readonly configService: ConfigService,
-    private readonly redisCacheService: RedisService
+    private userRoleRepository: Repository<SysUserRole>
   ) {}
 
   /**
@@ -299,7 +293,7 @@ export class UserService {
    * 获取用户认证凭证信息
    *
    * 用于登录认证阶段，返回用户的基本信息和权限相关数据
-   * 权限标识（perms）不在此处获取，而是在权限校验时从角色权限缓存动态读取
+   * 权限标识（perms）从角色与菜单关联数据动态读取。
    */
   async getAuthCredentialsByUsername(username: string): Promise<UserAuthInfo | null> {
     const user = await this.userRepository.findOne({
@@ -372,52 +366,6 @@ export class UserService {
   }
 
   /**
-   * 根据手机号获取用户认证信息（短信登录）
-   */
-  async findByMobile(mobile: string): Promise<{
-    id: string;
-    username: string;
-    status: number;
-    deptId: string;
-    deptTreePath: string;
-    roles: string[];
-    dataScopes: RoleDataScope[];
-  } | null> {
-    const mobileSafe = mobile?.trim();
-    if (!mobileSafe) return null;
-
-    const user = await this.userRepository.findOne({
-      where: { mobile: mobileSafe, isDeleted: 0 },
-      relations: ["roles"],
-    });
-    if (!user) return null;
-
-    const roleIds = (user.roles || []).map((role) => role.id);
-    const roles = await this.roleService.findRolesByIds(roleIds);
-    const roleCodes = roles.map((r) => r.code);
-
-    // 获取多角色数据权限列表
-    const dataScopes = await this.roleService.getRoleDataScopes(roleCodes);
-
-    // 获取部门树路径
-    let deptTreePath = "";
-    if (user.deptId) {
-      const depts = await this.deptService.findByIds([user.deptId]);
-      deptTreePath = depts?.[0]?.treePath || "";
-    }
-
-    return {
-      id: user.id.toString(),
-      username: user.username,
-      status: user.status,
-      deptId: user.deptId?.toString() || "",
-      deptTreePath,
-      roles: roleCodes,
-      dataScopes,
-    };
-  }
-
-  /**
    * 获取当前用户信息
    */
   async findMe(currentUserInfo: CurrentUserInfo): Promise<CurrentUserDto> {
@@ -462,9 +410,8 @@ export class UserService {
         perms = await this.rolePermService.getPermsByRoleCodes(roleCodes);
       }
     }
-    // 缓存未命中时触发全量刷新（防止 DB 数据已更新但缓存未同步）
+    // 角色未配置权限时，保持空权限集合。
     if (perms.length === 0 && roleCodes.length && !roleCodes.includes(ROOT_ROLE_CODE)) {
-      await this.rolePermService.refreshAllRolePermsCache();
       perms = await this.rolePermService.getPermsByRoleCodes(roleCodes);
     }
 
@@ -589,7 +536,6 @@ export class UserService {
 
     const ok = (result.affected ?? 0) > 0;
     if (ok) {
-      await this.invalidateUserSessions(userId.toString());
     }
     return ok;
   }
@@ -621,162 +567,8 @@ export class UserService {
     const result = await this.userRepository.update(user.id, { password: hashed });
     const ok = (result.affected ?? 0) > 0;
     if (ok) {
-      await this.invalidateUserSessions(user.id);
     }
     return ok;
-  }
-
-  async sendMobileCode(mobile: string): Promise<boolean> {
-    if (!mobile?.trim()) {
-      throw new BusinessException("手机号不能为空");
-    }
-    const code = "1234";
-    const redisKey = `captcha:mobile:${mobile.trim()}`;
-    await this.redisCacheService.set(redisKey, code, 60 * 5);
-    return true;
-  }
-
-  async bindOrChangeMobile(userId: string, data: MobileUpdateDto): Promise<boolean> {
-    const mobile = data.mobile?.trim();
-    const code = data.code?.trim();
-    const password = data.password;
-
-    const user = await this.userRepository.findOne({
-      where: { id: userId.toString(), isDeleted: 0 },
-      select: ["id", "password", "mobile"],
-    });
-    if (!user) {
-      throw new BusinessException("用户不存在");
-    }
-    if (!(await bcrypt.compare(password, user.password))) {
-      throw new BusinessException("当前密码错误");
-    }
-
-    const exist = await this.userRepository.findOne({
-      where: { mobile, isDeleted: 0, id: Not(userId.toString()) },
-      select: ["id"],
-    });
-    if (exist) {
-      throw new BusinessException("手机号已被其他账号绑定");
-    }
-
-    const redisKey = `captcha:mobile:${mobile}`;
-    const cached = await this.redisCacheService.get<string>(redisKey);
-
-    if (!cached) {
-      throw new BusinessException("验证码已过期");
-    }
-    if (cached !== code) {
-      throw new BusinessException("验证码错误");
-    }
-
-    await this.redisCacheService.del(redisKey);
-    const result = await this.userRepository.update(
-      { id: userId.toString(), isDeleted: 0 },
-      { mobile }
-    );
-    return (result.affected ?? 0) > 0;
-  }
-
-  async sendEmailCode(email: string): Promise<void> {
-    if (!email?.trim()) {
-      throw new BusinessException("邮箱不能为空");
-    }
-    const code = "1234";
-    const redisKey = `captcha:email:${email.trim()}`;
-    await this.redisCacheService.set(redisKey, code, 60 * 5);
-  }
-
-  async bindOrChangeEmail(userId: string, data: EmailUpdateDto): Promise<boolean> {
-    const email = data.email?.trim();
-    const code = data.code?.trim();
-    const password = data.password;
-
-    const user = await this.userRepository.findOne({
-      where: { id: userId.toString(), isDeleted: 0 },
-      select: ["id", "password", "email"],
-    });
-    if (!user) {
-      throw new BusinessException("用户不存在");
-    }
-    if (!(await bcrypt.compare(password, user.password))) {
-      throw new BusinessException("当前密码错误");
-    }
-
-    const exist = await this.userRepository.findOne({
-      where: { email, isDeleted: 0, id: Not(userId.toString()) },
-      select: ["id"],
-    });
-    if (exist) {
-      throw new BusinessException("邮箱已被其他账号绑定");
-    }
-
-    const redisKey = `captcha:email:${email}`;
-    const cached = await this.redisCacheService.get<string>(redisKey);
-
-    if (!cached) {
-      throw new BusinessException("验证码已过期");
-    }
-    if (cached !== code) {
-      throw new BusinessException("验证码错误");
-    }
-
-    await this.redisCacheService.del(redisKey);
-    const result = await this.userRepository.update(
-      { id: userId.toString(), isDeleted: 0 },
-      { email }
-    );
-    return (result.affected ?? 0) > 0;
-  }
-
-  async unbindMobile(userId: string, password: string): Promise<boolean> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId.toString(), isDeleted: 0 },
-      select: ["id", "password", "mobile"],
-    });
-    if (!user) {
-      throw new BusinessException("用户不存在");
-    }
-    if (!user.mobile?.trim()) {
-      throw new BusinessException("当前账号未绑定手机号");
-    }
-    if (!(await bcrypt.compare(password, user.password))) {
-      throw new BusinessException("当前密码错误");
-    }
-
-    user.mobile = null;
-    await this.userRepository.save(user);
-
-    const persisted = await this.userRepository.findOne({
-      where: { id: userId.toString(), isDeleted: 0 },
-      select: ["mobile"],
-    });
-    return !persisted?.mobile;
-  }
-
-  async unbindEmail(userId: string, password: string): Promise<boolean> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId.toString(), isDeleted: 0 },
-      select: ["id", "password", "email"],
-    });
-    if (!user) {
-      throw new BusinessException("用户不存在");
-    }
-    if (!user.email?.trim()) {
-      throw new BusinessException("当前账号未绑定邮箱");
-    }
-    if (!(await bcrypt.compare(password, user.password))) {
-      throw new BusinessException("当前密码错误");
-    }
-
-    user.email = null;
-    await this.userRepository.save(user);
-
-    const persisted = await this.userRepository.findOne({
-      where: { id: userId.toString(), isDeleted: 0 },
-      select: ["email"],
-    });
-    return !persisted?.email;
   }
 
   async listUserOptions() {
@@ -891,45 +683,6 @@ export class UserService {
   }
 
   /**
-   * 失效指定用户的所有会话
-   * - JWT 模式：递增用户 Token 版本号 auth:user:token_version:{userId}
-   * - redis-token 模式：删除该用户的 access/refresh 映射
-   */
-  private async invalidateUserSessions(userId: string): Promise<void> {
-    const userIdStr = userId?.toString();
-    if (!userIdStr) return;
-
-    const sessionType = this.configService.get<string>("SESSION_TYPE") || "jwt";
-
-    // JWT 模式：递增 Token 版本号，旧 JWT 全部失效
-    const versionKey = `auth:user:token_version:${userIdStr}`;
-    const currentVersion = await this.redisCacheService.get<number>(versionKey);
-    const nextVersion = (currentVersion ?? 0) + 1;
-    await this.redisCacheService.set(versionKey, nextVersion);
-
-    await this.redisCacheService.del(`auth:user:jwt_session:${userIdStr}`);
-
-    // redis-token 模式：清理 access/refresh 映射
-    if (sessionType === "redis-token") {
-      const accessKey = `auth:user:access:${userIdStr}`;
-      const refreshKey = `auth:user:refresh:${userIdStr}`;
-
-      const accessToken = await this.redisCacheService.get<string>(accessKey);
-      const refreshToken = await this.redisCacheService.get<string>(refreshKey);
-
-      if (accessToken) {
-        await this.redisCacheService.del(`auth:token:access:${accessToken}`);
-      }
-      if (refreshToken) {
-        await this.redisCacheService.del(`auth:token:refresh:${refreshToken}`);
-      }
-
-      await this.redisCacheService.del(accessKey);
-      await this.redisCacheService.del(refreshKey);
-    }
-  }
-
-  /**
    * 获取用户表单数据
    */
   async getUserForm(userId: string): Promise<SysUser> {
@@ -1009,7 +762,6 @@ export class UserService {
     }
 
     if (rolesChanged) {
-      await this.invalidateUserSessions(userIdStr);
     }
 
     return await this.userRepository.save(user);
@@ -1063,7 +815,6 @@ export class UserService {
         { isDeleted: 1, updateTime: new Date() as any }
       );
 
-      await this.invalidateUserSessions(idStr);
 
       return (result.affected ?? 0) > 0;
     });

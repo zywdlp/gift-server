@@ -2,9 +2,8 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { ConfigService } from "@nestjs/config";
-import { RedisService } from "../../common/redis/redis.service";
 import { RoleService } from "../../system/role/role.service";
-import { RedisConstants } from "../../common/constants/redis.constants";
+import { AuthService } from "../auth.service";
 
 /**
  * JWT 认证策略
@@ -12,14 +11,14 @@ import { RedisConstants } from "../../common/constants/redis.constants";
  * 解析并验证 JWT 令牌，将令牌载荷转换为标准化的用户对象
  * 处理令牌过期、签名有效性等底层验证
  *
- * 注意：权限标识（perms）不在此处获取，而是在权限守卫中从角色权限缓存动态读取
+ * 注意：权限标识（perms）不在此处获取，而是在权限守卫中从 MySQL 动态读取。
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly configService: ConfigService,
-    private readonly redisCacheService: RedisService,
-    private readonly roleService: RoleService
+    private readonly roleService: RoleService,
+    private readonly authService: AuthService
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -40,25 +39,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     const userId = payload.sub;
-
-    // 校验 Token 版本号
-    const tokenVersion: number = payload.tokenVersion ?? 0;
-    const versionKey = `${RedisConstants.Auth.USER_TOKEN_VERSION}:${userId}`;
-    const currentVersionRaw = await this.redisCacheService.get<number>(versionKey);
-    const currentVersion = currentVersionRaw ?? 0;
-
-    if (tokenVersion < currentVersion) {
+    if (await this.authService.isJtiBlacklisted(payload.jti)) {
       throw new UnauthorizedException("Token 已失效，请重新登录");
-    }
-
-    // 校验黑名单
-    const jti: string | undefined = payload.jti;
-    if (jti) {
-      const blacklistKey = `${RedisConstants.Auth.TOKEN_BLACKLIST}:${jti}`;
-      const inBlacklist = await this.redisCacheService.hasKey(blacklistKey);
-      if (inBlacklist) {
-        throw new UnauthorizedException("Token 已失效，请重新登录");
-      }
     }
 
     const roles: string[] = payload.roles || [];

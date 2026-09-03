@@ -8,7 +8,6 @@ import { RoleModule } from "../role/role.module";
 import { DeptModule } from "../dept/dept.module";
 import { MenuModule } from "../menu/menu.module";
 import { LogModule } from "../log/log.module";
-import { RedisSharedModule } from "../../common/redis/redis.module";
 
 @Module({
   imports: [
@@ -17,7 +16,6 @@ import { RedisSharedModule } from "../../common/redis/redis.module";
     forwardRef(() => DeptModule),
     forwardRef(() => MenuModule),
     forwardRef(() => LogModule),
-    RedisSharedModule,
   ],
   controllers: [UserController],
   providers: [UserService],
