@@ -443,6 +443,7 @@ export class MenuService {
           path: routePath,
           component: isEmbedded ? "iframe" : (isExternal ? null : menu.component || ""),
           name: isExternal ? (menu.routeName || "") : (menu.routeName || ""),
+          redirect: menu.redirect || undefined,
           meta: {
             title: menu.name,
             icon: menu.icon || "",

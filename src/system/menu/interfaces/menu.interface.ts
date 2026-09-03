@@ -21,6 +21,7 @@ export interface Route {
   path: string;
   component: string;
   name: string;
+  redirect?: string;
   meta: {
     title: string;
     icon: string;

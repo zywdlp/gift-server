@@ -1,4 +1,5 @@
 import { NestFactory, Reflector } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe, HttpStatus } from "@nestjs/common";
@@ -8,6 +9,7 @@ import type { ValidationError } from "class-validator";
 import { BusinessException } from "./common/exceptions/business.exception";
 import { ErrorCode } from "./common/enums/error-code.enum";
 import { Logger } from "@nestjs/common";
+import { getUploadRoot, UPLOAD_URL_PREFIX } from "./common/utils/upload-path.util";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
@@ -17,8 +19,11 @@ async function bootstrap() {
     };
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+
+  // 仅暴露商品图片目录，不恢复通用文件管理服务。
+  app.useStaticAssets(getUploadRoot(), { prefix: `${UPLOAD_URL_PREFIX}/` });
 
   // 全局前缀
   app.setGlobalPrefix("/api/v1");

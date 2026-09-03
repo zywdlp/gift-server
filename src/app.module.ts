@@ -17,6 +17,7 @@ import { AuthModule } from "./auth/auth.module"; // 认证相关模块（隐式�
 import { RoleModule } from "./system/role/role.module"; // 角色模块（提供 RolePermService）
 import { DictModule } from "./system/dict/dict.module"; // 系统字典模块
 import { LogModule } from "./system/log/log.module";
+import { ProductModule } from "./product/product.module";
 
 import { LoggerMiddleware } from "./common/middleware/logger.middleware";
 import { RequestContextMiddleware } from "./common/middleware/request-context.middleware";
@@ -73,6 +74,7 @@ const envPath = `.env.${process.env.NODE_ENV || "dev"}`;
     RoleModule,
     DictModule,
     LogModule,
+    ProductModule,
   ],
   controllers: [],
   providers: [

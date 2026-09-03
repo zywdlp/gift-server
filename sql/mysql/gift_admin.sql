@@ -137,7 +137,12 @@ CREATE TABLE `sys_menu`  (
 -- ----------------------------
 -- Records of sys_menu
 -- ----------------------------
-INSERT INTO `sys_menu` (`id`, `parent_id`, `tree_path`, `name`, `type`, `route_name`, `route_path`, `component`, `perm`, `always_show`, `keep_alive`, `visible`, `sort`, `icon`, `redirect`, `create_time`, `update_time`, `params`) VALUES (100, 0, '0', '礼品管理', 'M', 'Gift', '/gift', 'gift/index', NULL, 0, 1, 1, 1, 'gift', NULL, now(), now(), NULL);
+INSERT INTO `sys_menu` (`id`, `parent_id`, `tree_path`, `name`, `type`, `route_name`, `route_path`, `component`, `perm`, `always_show`, `keep_alive`, `visible`, `sort`, `icon`, `redirect`, `create_time`, `update_time`, `params`) VALUES
+  (100, 0, '0', '商品管理', 'M', 'GiftProduct', '/products', 'gift/product/index', NULL, 0, 1, 1, 1, 'gift', NULL, now(), now(), NULL),
+  (101, 0, '0', '卡批次管理', 'M', 'GiftBatch', '/batches', 'gift/batch/index', NULL, 0, 1, 1, 2, 'table', NULL, now(), now(), NULL),
+  (102, 0, '0', '卡券管理', 'M', 'GiftCard', '/cards', 'gift/card/index', NULL, 0, 1, 1, 3, 'qr-code', NULL, now(), now(), NULL),
+  (103, 0, '0', '权益方案', 'M', 'GiftBenefitPlan', '/benefit-plans', 'gift/benefit-plan/index', NULL, 0, 1, 1, 4, 'document', NULL, now(), now(), NULL),
+  (104, 0, '0', '发放管理', 'M', 'GiftAssignment', '/assignments', 'gift/assignment/index', NULL, 0, 1, 1, 5, 'group', NULL, now(), now(), NULL);
 -- ----------------------------
 -- Table structure for sys_role
 -- ----------------------------
@@ -295,3 +300,26 @@ CREATE TABLE `sys_token_blacklist` (
   UNIQUE KEY `uk_token_blacklist_jti` (`jti`),
   KEY `idx_token_blacklist_expire_time` (`expire_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='JWT令牌黑名单';
+
+-- ----------------------------
+-- Table structure for product
+-- ----------------------------
+CREATE TABLE `product` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` varchar(100) NOT NULL COMMENT '商品名称',
+  `short_name` varchar(100) DEFAULT NULL COMMENT '商品简称',
+  `cover_image` varchar(500) DEFAULT NULL COMMENT '商品主图地址',
+  `detail_images` json DEFAULT NULL COMMENT '商品详情图片地址',
+  `reference_value` decimal(10,2) DEFAULT NULL COMMENT '参考价值',
+  `description` text DEFAULT NULL COMMENT '商品详情',
+  `delivery_scope` text DEFAULT NULL COMMENT '配送范围',
+  `after_sales` text DEFAULT NULL COMMENT '售后说明',
+  `create_by` bigint DEFAULT NULL COMMENT '创建人ID',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` bigint DEFAULT NULL COMMENT '修改人ID',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `is_deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0-未删除 1-已删除)',
+  PRIMARY KEY (`id`),
+  KEY `idx_product_name` (`name`),
+  KEY `idx_product_deleted_time` (`is_deleted`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='礼品商品表';
