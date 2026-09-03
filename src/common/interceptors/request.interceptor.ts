@@ -34,6 +34,10 @@ export class XRequestInterceptor implements NestInterceptor {
     req["seq"] = seq;
 
     const isCheckAPI = !this.reflector.get<boolean>(IS_PUBLIC_KEY, context.getHandler());
+    const skipResponseLog = this.reflector.getAllAndOverride<boolean>("skipResponseLog", [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
     // 日志记录保持原始数据
     const logRequest = () => ({
@@ -46,7 +50,7 @@ export class XRequestInterceptor implements NestInterceptor {
         if (isCheckAPI) {
           this.logger.info("API Response", {
             ...logRequest(),
-            response: data,
+            response: skipResponseLog ? "[已省略敏感响应内容]" : data,
           });
 
           if (res.statusCode === HttpStatus.CREATED && req.method === "POST") {
