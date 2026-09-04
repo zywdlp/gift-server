@@ -21,6 +21,7 @@
     "lint:config": "cross-env ESLINT_USE_FLAT_CONFIG=true eslint --print-config src/main.ts"
   },
   "dependencies": {
+    "@alicloud/dypnsapi20170525": "^2.0.0",
     "@nestjs/common": "^11.1.23",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.23",

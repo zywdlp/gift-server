@@ -1,4 +1,0 @@
-allowBuilds:
-  '@nestjs/core': false
-  '@scarf/scarf': false
-  bcrypt: true

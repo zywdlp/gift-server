@@ -6,6 +6,7 @@ import { H5User } from "./entities/h5-user.entity";
 import { H5SmsCode } from "./entities/h5-sms-code.entity";
 import { H5AuthController } from "./h5-auth.controller";
 import { H5AuthService } from "./h5-auth.service";
+import { AliyunSmsAuthService } from "./aliyun-sms-auth.service";
 
 @Module({
   imports: [
@@ -20,6 +21,6 @@ import { H5AuthService } from "./h5-auth.service";
     }),
   ],
   controllers: [H5AuthController],
-  providers: [H5AuthService],
+  providers: [H5AuthService, AliyunSmsAuthService],
 })
 export class H5AuthModule {}
