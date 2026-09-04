@@ -1,13 +1,19 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomInt } from "crypto";
 
 const ALGORITHM = "aes-256-gcm";
 
 function getKey() {
-  return createHash("sha256").update(process.env.CARD_SECRET_KEY || process.env.JWT_SECRET_KEY || "gift-card-secret").digest();
+  const secret = process.env.CARD_SECRET_KEY;
+  if (secret) return createHash("sha256").update(secret).digest();
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("生产环境必须配置独立的 CARD_SECRET_KEY");
+  }
+  // 仅供本地开发兼容既有测试数据，生产环境绝不允许复用 JWT 密钥。
+  return createHash("sha256").update(process.env.JWT_SECRET_KEY || "gift-card-secret").digest();
 }
 
 export function generatePin() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(randomInt(100000, 1_000_000));
 }
 
 export function generateQrToken() {

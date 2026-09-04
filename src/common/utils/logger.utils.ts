@@ -20,12 +20,12 @@ interface ResponseLogContext {
 export class LoggerUtils {
   static captureRequestContext(req: Request): RequestLogContext {
     return {
-      url: req.originalUrl,
+      url: this.redactUrl(req.originalUrl),
       method: req.method,
       clientIP: this.parseClientIP(req),
       userAgent: req.headers["user-agent"],
       referrer: req.headers.referer,
-      params: req.params as Record<string, unknown>,
+      params: this.redactSensitiveFields(req.params as Record<string, unknown>),
       query: this.redactSensitiveFields(req.query as Record<string, unknown>),
       body: this.redactSensitiveFields(req.body as Record<string, unknown>),
     };
@@ -55,13 +55,39 @@ export class LoggerUtils {
       "accessToken",
       "refreshToken",
       "authorization",
+      "pin",
+      "code",
+      "phone",
+      "cardtoken",
+      "redeemsessiontoken",
+      "qrtoken",
+      "recipient",
+      "address",
+      "province",
+      "city",
+      "district",
+      "detail",
     ]);
 
-    return Object.fromEntries(
-      Object.entries(input || {}).map(([key, value]) => [
-        key,
-        sensitiveKeys.has(key) ? "[REDACTED]" : value,
-      ])
-    );
+    const redact = (value: unknown, key?: string): unknown => {
+      if (key && sensitiveKeys.has(key.toLowerCase())) return "[REDACTED]";
+      if (Array.isArray(value)) return value.map((item) => redact(item));
+      if (value && typeof value === "object") {
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([childKey, childValue]) => [
+          childKey,
+          redact(childValue, childKey),
+        ]));
+      }
+      return value;
+    };
+    return redact(input || {}) as Record<string, unknown>;
+  }
+
+  private static redactUrl(url: string): string {
+    const [path, query] = url.split("?", 2);
+    const safePath = path.replace(/(\/by-token\/)[^/]+/, "$1[REDACTED]");
+    if (!query) return safePath;
+    const safeQuery = this.redactSensitiveFields(Object.fromEntries(new URLSearchParams(query).entries()));
+    return `${safePath}?${new URLSearchParams(Object.entries(safeQuery).map(([key, value]) => [key, String(value)])).toString()}`;
   }
 }

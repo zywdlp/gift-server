@@ -21,6 +21,9 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+  if (process.env.NODE_ENV === "production" && !configService.get<string>("CARD_SECRET_KEY")) {
+    throw new Error("生产环境必须配置独立的 CARD_SECRET_KEY");
+  }
 
   // 仅暴露商品图片目录，不恢复通用文件管理服务。
   app.useStaticAssets(getUploadRoot(), { prefix: `${UPLOAD_URL_PREFIX}/` });

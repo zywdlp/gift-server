@@ -1,5 +1,6 @@
-import { Controller, Get, Query, UsePipes, ValidationPipe } from "@nestjs/common";
+import { Controller, Get, Query, UseGuards, UsePipes, ValidationPipe } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { AdminOnlyGuard } from "@/common/guards/admin-only.guard";
 import { LogService } from "./log.service";
 import { LogQueryDto } from "./dto/log-query.dto";
 
@@ -8,6 +9,7 @@ import { LogQueryDto } from "./dto/log-query.dto";
  */
 @ApiTags("09.日志接口")
 @Controller("logs")
+@UseGuards(AdminOnlyGuard)
 export class LogController {
   constructor(private readonly logService: LogService) {}
 

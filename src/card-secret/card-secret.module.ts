@@ -6,10 +6,11 @@ import { CardBatch } from "./entities/card-batch.entity";
 import { GiftCard } from "./entities/gift-card.entity";
 import { SysUser } from "@/system/user/entities/sys-user.entity";
 import { Product } from "@/product/entities/product.entity";
+import { AdminOnlyGuard } from "@/common/guards/admin-only.guard";
 
 @Module({
   imports: [TypeOrmModule.forFeature([CardBatch, GiftCard, Product, SysUser])],
   controllers: [CardSecretController],
-  providers: [CardSecretService],
+  providers: [CardSecretService, AdminOnlyGuard],
 })
 export class CardSecretModule {}

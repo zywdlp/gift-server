@@ -6,12 +6,14 @@ import { LogController } from "./log.controller";
 import { SysLog } from "./entities/sys-log.entity";
 import { LoggingInterceptor } from "./logging.interceptor";
 import { SysUser } from "../user/entities/sys-user.entity";
+import { AdminOnlyGuard } from "@/common/guards/admin-only.guard";
 
 @Module({
   imports: [TypeOrmModule.forFeature([SysLog, SysUser])],
   controllers: [LogController],
   providers: [
     LogService,
+    AdminOnlyGuard,
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,

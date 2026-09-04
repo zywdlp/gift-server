@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Res, SetMetadata } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Res, SetMetadata, UseGuards } from "@nestjs/common";
 import type { Response as ExpressResponse } from "express";
 import * as XLSX from "xlsx";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
@@ -10,9 +10,11 @@ import { CardSecretQueryDto } from "./dto/card-secret-query.dto";
 import { GenerateCardSecretDto } from "./dto/generate-card-secret.dto";
 import { GiftCardQueryDto } from "./dto/gift-card-query.dto";
 import { BindGiftCardsDto } from "./dto/bind-gift-cards.dto";
+import { AdminOnlyGuard } from "@/common/guards/admin-only.guard";
 
 @ApiTags("卡密管理")
 @Controller("card-secrets")
+@UseGuards(AdminOnlyGuard)
 export class CardSecretController {
   constructor(private readonly cardSecretService: CardSecretService) {}
 
