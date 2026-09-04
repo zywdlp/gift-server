@@ -19,6 +19,10 @@ import { DictModule } from "./system/dict/dict.module"; // 系统字典模块
 import { LogModule } from "./system/log/log.module";
 import { ProductModule } from "./product/product.module";
 import { CardSecretModule } from "./card-secret/card-secret.module";
+import { H5CardModule } from "./h5-card/h5-card.module";
+import { H5RedeemModule } from "./h5-redeem/h5-redeem.module";
+import { H5AuthModule } from "./h5-auth/h5-auth.module";
+import { RedeemOrderModule } from "./redeem-order/redeem-order.module";
 
 import { LoggerMiddleware } from "./common/middleware/logger.middleware";
 import { RequestContextMiddleware } from "./common/middleware/request-context.middleware";
@@ -77,6 +81,10 @@ const envPath = `.env.${process.env.NODE_ENV || "dev"}`;
     LogModule,
     ProductModule,
     CardSecretModule,
+    H5CardModule,
+    H5RedeemModule,
+    H5AuthModule,
+    RedeemOrderModule,
   ],
   controllers: [],
   providers: [

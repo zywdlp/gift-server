@@ -71,11 +71,18 @@ export class CardSecretService {
     }
   }
 
-  async getCards(batchId: string, pageNum = 1, pageSize = 20) {
+  async getCards(batchId: string, pageNum = 1, pageSize = 20, cardNo?: string) {
     await this.findBatch(batchId);
-    const [data, total] = await this.cardRepository.findAndCount({
-      where: { batchId, isDeleted: 0 }, order: { createTime: "DESC" }, skip: (pageNum - 1) * pageSize, take: pageSize,
-    });
+    const builder = this.cardRepository
+      .createQueryBuilder("card")
+      .where("card.batchId = :batchId", { batchId })
+      .andWhere("card.isDeleted = 0");
+    if (cardNo?.trim()) builder.andWhere("card.cardNo LIKE :cardNo", { cardNo: `%${cardNo.trim()}%` });
+    const [data, total] = await builder
+      .orderBy("card.cardNo", "ASC")
+      .skip((pageNum - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
     return {
       data: data.map(({ pinHash, pinCiphertext, qrTokenHash, qrTokenCiphertext, ...card }) => ({
         ...card,
@@ -94,14 +101,23 @@ export class CardSecretService {
       .where("card.isDeleted = 0")
       .select([
         "card.id", "card.cardNo", "card.batchId", "card.productId", "card.status",
-        "card.expiryAt", "card.boundAt", "card.bindRemark", "card.createTime",
+        "card.expiryAt", "card.boundAt", "card.bindRemark", "card.createTime", "card.productSnapshot",
       ])
       .addSelect("batch.batchNo", "batchNo")
-      .addSelect("product.name", "productName");
+      .addSelect("product.name", "productName")
+      .addSelect("product.coverImage", "productCoverImage");
     if (query.cardNo?.trim()) builder.andWhere("card.cardNo LIKE :cardNo", { cardNo: `%${query.cardNo.trim()}%` });
     if (query.batchNo?.trim()) builder.andWhere("batch.batchNo LIKE :batchNo", { batchNo: `%${query.batchNo.trim()}%` });
     if (query.productName?.trim()) builder.andWhere("product.name LIKE :productName", { productName: `%${query.productName.trim()}%` });
-    if (query.status) builder.andWhere("card.status = :status", { status: query.status });
+    if (query.status === "EXPIRED") {
+      builder.andWhere("card.status = :activeStatus", { activeStatus: "ACTIVE" });
+      builder.andWhere("card.expiryAt <= :now", { now: new Date() });
+    } else if (query.status === "ACTIVE") {
+      builder.andWhere("card.status = :status", { status: "ACTIVE" });
+      builder.andWhere("card.expiryAt > :now", { now: new Date() });
+    } else if (query.status) {
+      builder.andWhere("card.status = :status", { status: query.status });
+    }
     const total = await builder.getCount();
     const result = await builder
       .orderBy("card.createTime", "DESC")
@@ -109,10 +125,13 @@ export class CardSecretService {
       .take(query.pageSize)
       .getRawAndEntities();
     return {
-      data: result.entities.map((card, index) => ({
+      data: result.entities.map(({ productSnapshot, ...card }, index) => ({
         ...card,
+        displayStatus: card.status === "ACTIVE" && card.expiryAt && card.expiryAt.getTime() <= Date.now()
+          ? "EXPIRED" : card.status,
         batchNo: result.raw[index].batchNo || "-",
         productName: result.raw[index].productName || "-",
+        productCoverImage: (productSnapshot as Record<string, unknown> | null)?.coverImage || result.raw[index].productCoverImage || null,
       })),
       page: { pageNum: query.pageNum, pageSize: query.pageSize, total },
     };

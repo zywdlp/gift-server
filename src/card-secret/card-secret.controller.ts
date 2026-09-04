@@ -37,8 +37,13 @@ export class CardSecretController {
   @Get(":id/cards")
   @ApiOperation({ summary: "批次卡密列表" })
   @SetMetadata("skipResponseLog", true)
-  getCards(@Param("id") id: string, @Query("pageNum") pageNum = 1, @Query("pageSize") pageSize = 20) {
-    return this.cardSecretService.getCards(id, Number(pageNum), Number(pageSize));
+  getCards(
+    @Param("id") id: string,
+    @Query("pageNum") pageNum = 1,
+    @Query("pageSize") pageSize = 20,
+    @Query("cardNo") cardNo?: string,
+  ) {
+    return this.cardSecretService.getCards(id, Number(pageNum), Number(pageSize), cardNo);
   }
 
   @Post(":id/export-printing")

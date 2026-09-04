@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { randomUUID } from "crypto";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import { basename, extname, isAbsolute, join, relative, resolve } from "path";
-import { Repository } from "typeorm";
+import { DeepPartial, Repository } from "typeorm";
 import { BusinessException } from "@/common/exceptions/business.exception";
 import { getUploadRoot, UPLOAD_URL_PREFIX } from "@/common/utils/upload-path.util";
 import { CreateProductDto } from "./dto/create-product.dto";
@@ -48,7 +48,22 @@ export class ProductService {
       .skip((pageNum - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
-    return { data, page: { pageNum, pageSize, total } };
+    const productIds = data.map((product) => product.id);
+    const boundProductIds = productIds.length
+      ? new Set(
+          (await this.giftCardRepository
+            .createQueryBuilder("giftCard")
+            .select("DISTINCT giftCard.productId", "productId")
+            .where("giftCard.productId IN (:...productIds)", { productIds })
+            .andWhere("giftCard.isDeleted = 0")
+            .getRawMany())
+            .map((row) => String(row.productId))
+        )
+      : new Set<string>();
+    return {
+      data: data.map((product) => ({ ...product, hasBoundCards: boundProductIds.has(String(product.id)) })),
+      page: { pageNum, pageSize, total },
+    };
   }
 
   async getForm(id: string) {
@@ -56,13 +71,18 @@ export class ProductService {
   }
 
   async create(dto: CreateProductDto) {
-    return await this.productRepository.save(this.productRepository.create(this.normalize(dto) as any));
+    const product = this.productRepository.create(this.normalize(dto) as DeepPartial<Product>);
+    this.assertCoverImage(product);
+    return await this.productRepository.save(product);
   }
 
   async update(id: string, dto: UpdateProductDto) {
     const product = await this.findActiveProduct(id);
+    const hasBoundCards = await this.giftCardRepository.exists({ where: { productId: id, isDeleted: 0 } });
+    if (hasBoundCards) throw new BusinessException("该商品已绑定礼品卡，不能编辑");
     const previousImageUrls = this.getImageUrls(product);
     Object.assign(product, this.normalize(dto));
+    this.assertCoverImage(product);
     await this.productRepository.save(product);
     await this.removeUnusedImages(
       previousImageUrls.filter((url) => !this.getImageUrls(product).includes(url))
@@ -106,6 +126,10 @@ export class ProductService {
     const product = await this.productRepository.findOne({ where: { id, isDeleted: 0 } });
     if (!product) throw new BusinessException("商品不存在或已删除");
     return product;
+  }
+
+  private assertCoverImage(product: Product) {
+    if (!product.coverImage) throw new BusinessException("请上传商品主图");
   }
 
   private normalize(dto: CreateProductDto | UpdateProductDto) {

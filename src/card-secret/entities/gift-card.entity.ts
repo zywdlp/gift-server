@@ -30,8 +30,8 @@ export class GiftCard extends BaseEntity {
   @Column({ name: "product_snapshot", type: "json", nullable: true, comment: "绑定时的商品快照" })
   productSnapshot?: Record<string, unknown> | null;
 
-  @Column({ length: 20, default: "UNBOUND", comment: "卡片状态：UNBOUND未绑定，ACTIVE可兑换" })
-  status: "UNBOUND" | "ACTIVE";
+  @Column({ length: 20, default: "UNBOUND", comment: "卡片状态：UNBOUND未绑定，ACTIVE可兑换，REDEEMED已兑换" })
+  status: "UNBOUND" | "ACTIVE" | "REDEEMED";
 
   @Column({ name: "expiry_at", type: "datetime", nullable: true, comment: "兑换截止时间" })
   expiryAt?: Date | null;

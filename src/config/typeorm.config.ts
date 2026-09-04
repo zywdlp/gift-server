@@ -1,12 +1,16 @@
-﻿import { registerAs } from "@nestjs/config";
+﻿/*
+ * @LastEditors: zyw@decard.com
+ * @Date: 2026-09-01 16:28:09
+ * @LastEditTime: 2026-09-04 11:24:06
+ * @Description: 
+ */
+import { registerAs } from "@nestjs/config";
 
 export default registerAs("typeorm", () => {
   const required = (envKey: string, label: string) => {
     const value = process.env[envKey];
     if (!value) {
-      throw new Error(
-        `[TypeORM Config] 环境变量 ${envKey}(${label}) 未配置，请检查 .env 文件`
-      );
+      throw new Error(`[TypeORM Config] 环境变量 ${envKey}(${label}) 未配置，请检查 .env 文件`);
     }
     return value;
   };
@@ -21,7 +25,7 @@ export default registerAs("typeorm", () => {
     autoLoadEntities: true,
     supportBigNumbers: true,
     bigNumberStrings: true,
-    synchronize: false,
+    synchronize: true,
     logging: process.env.TYPEORM_LOGGING === "false" ? false : true,
   };
 });

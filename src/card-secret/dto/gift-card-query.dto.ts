@@ -18,6 +18,6 @@ export class GiftCardQueryDto extends BaseQueryDto {
   productName?: string;
 
   @IsOptional()
-  @IsIn(["UNBOUND", "ACTIVE"])
-  status?: "UNBOUND" | "ACTIVE";
+  @IsIn(["UNBOUND", "ACTIVE", "EXPIRED", "REDEEMED"])
+  status?: "UNBOUND" | "ACTIVE" | "EXPIRED" | "REDEEMED";
 }

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { ArrayMaxSize, IsArray, IsNumber, IsOptional, IsString, MaxLength, Min } from "class-validator";
+import { ArrayMaxSize, IsArray, IsDefined, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min } from "class-validator";
 
 export class CreateProductDto {
   @ApiProperty({ description: "商品名称" })
@@ -14,11 +14,11 @@ export class CreateProductDto {
   @MaxLength(100)
   shortName?: string;
 
-  @ApiPropertyOptional({ description: "商品主图地址" })
-  @IsOptional()
+  @ApiProperty({ description: "商品主图地址" })
   @IsString()
+  @IsNotEmpty({ message: "请上传商品主图" })
   @MaxLength(500)
-  coverImage?: string;
+  coverImage: string;
 
   @ApiPropertyOptional({ description: "商品详情图片地址列表", type: [String] })
   @IsOptional()
@@ -28,12 +28,12 @@ export class CreateProductDto {
   @MaxLength(500, { each: true })
   detailImages?: string[];
 
-  @ApiPropertyOptional({ description: "参考价值", example: 99.9 })
-  @IsOptional()
+  @ApiProperty({ description: "参考价值", example: 99.9 })
+  @IsDefined({ message: "参考价值不能为空" })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  referenceValue?: number;
+  referenceValue: number;
 
   @ApiPropertyOptional({ description: "商品详情" })
   @IsOptional()
