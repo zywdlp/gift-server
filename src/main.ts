@@ -21,7 +21,10 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
-  if (process.env.NODE_ENV === "production" && !configService.get<string>("CARD_SECRET_KEY")) {
+  const isProduction = ["prod", "production"].includes(
+    (configService.get<string>("NODE_ENV") || "dev").toLowerCase()
+  );
+  if (isProduction && !configService.get<string>("CARD_SECRET_KEY")) {
     throw new Error("生产环境必须配置独立的 CARD_SECRET_KEY");
   }
 
@@ -31,9 +34,16 @@ async function bootstrap() {
   // 全局前缀
   app.setGlobalPrefix("/api/v1");
 
-  // 跨域设置
+  // 生产环境仅允许配置的管理端和 H5 域名跨域访问。
+  const corsOrigins = (configService.get<string>("CORS_ORIGINS") || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  if (isProduction && corsOrigins.length === 0) {
+    throw new Error("生产环境必须配置 CORS_ORIGINS");
+  }
   app.enableCors({
-    origin: true,
+    origin: corsOrigins.length > 0 ? corsOrigins : true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     credentials: true,
   });
@@ -78,27 +88,30 @@ async function bootstrap() {
     })
   );
 
-  // Swagger 配置
-  const config = new DocumentBuilder()
-    .setTitle("gift-server")
-    .setDescription(`礼品管理后台接口文档`)
-    .setVersion("1.0")
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  // 使用 alpha 排序
-  SwaggerModule.setup("api-docs", app, document, {
-    swaggerOptions: {
-      tagsSorter: "alpha",
-    },
-  });
+  // 开发环境默认开放接口文档；生产环境只有显式开启时才开放。
+  const swaggerSetting = configService.get<string>("SWAGGER_ENABLED");
+  const swaggerEnabled = swaggerSetting === "true" || (!isProduction && swaggerSetting !== "false");
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle("gift-server")
+      .setDescription(`礼品管理后台接口文档`)
+      .setVersion("1.0")
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup("api-docs", app, document, {
+      swaggerOptions: {
+        tagsSorter: "alpha",
+      },
+    });
+  }
 
   // 端口通过环境变量 SERVER_PORT 配置（默认 8000）
   const portRaw = configService.get("APP_PORT") ?? configService.get("SERVER_PORT") ?? 8000;
   const port = Number(portRaw) || 8000;
   await app.listen(port);
   logger.log(`应用已启动: http://localhost:${port}`);
-  logger.log(`接口文档: http://localhost:${port}/api-docs`);
+  if (swaggerEnabled) logger.log(`接口文档: http://localhost:${port}/api-docs`);
 }
 
 void bootstrap();

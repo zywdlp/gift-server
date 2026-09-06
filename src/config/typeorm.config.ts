@@ -7,6 +7,14 @@
 import { registerAs } from "@nestjs/config";
 
 export default registerAs("typeorm", () => {
+  const isProduction = ["prod", "production"].includes(
+    (process.env.NODE_ENV || "dev").toLowerCase()
+  );
+  const synchronize = process.env.TYPEORM_SYNCHRONIZE === "true";
+  if (isProduction && synchronize) {
+    throw new Error("[TypeORM Config] 生产环境禁止开启 TYPEORM_SYNCHRONIZE");
+  }
+
   const required = (envKey: string, label: string) => {
     const value = process.env[envKey];
     if (!value) {
@@ -25,7 +33,7 @@ export default registerAs("typeorm", () => {
     autoLoadEntities: true,
     supportBigNumbers: true,
     bigNumberStrings: true,
-    synchronize: true,
+    synchronize,
     logging: process.env.TYPEORM_LOGGING === "false" ? false : true,
   };
 });
