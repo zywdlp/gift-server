@@ -1,0 +1,4 @@
+allowBuilds:
+  '@alicloud/openapi-core': true
+  '@scarf/scarf': false
+  bcrypt: true

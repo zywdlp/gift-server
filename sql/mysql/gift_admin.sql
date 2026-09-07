@@ -228,10 +228,10 @@ INSERT INTO `sys_user_role` (`user_id`, `role_id`) VALUES (1, 1);
 INSERT INTO `sys_menu`
   (`id`, `parent_id`, `tree_path`, `name`, `type`, `route_name`, `route_path`, `component`, `always_show`, `keep_alive`, `visible`, `sort`, `icon`, `create_time`, `update_time`)
 VALUES
-  (100, 0, '0', '商品管理', 'M', 'GiftProduct', '/products', 'gift/product/index', 0, 1, 1, 1, 'gift', NOW(), NOW()),
-  (101, 0, '0', '卡密管理', 'M', 'GiftCardSecret', '/card-secrets', 'gift/card-secret/index', 0, 1, 1, 2, 'table', NOW(), NOW()),
-  (102, 0, '0', '礼品卡管理', 'M', 'GiftCard', '/gift-cards', 'gift/card/index', 0, 1, 1, 3, 'tickets', NOW(), NOW()),
-  (106, 0, '0', '订单管理', 'M', 'GiftOrder', '/redeem-orders', 'gift/order/index', 0, 1, 1, 4, 'list', NOW(), NOW());
+  (100, 0, '0', '商品管理', 'M', 'GiftProduct', '/products', 'gift/product/index', 0, 1, 1, 1, 'el-icon-Goods', NOW(), NOW()),
+  (101, 0, '0', '卡密管理', 'M', 'GiftCardSecret', '/card-secrets', 'gift/card-secret/index', 0, 1, 1, 2, 'el-icon-Key', NOW(), NOW()),
+  (102, 0, '0', '礼品卡管理', 'M', 'GiftCard', '/gift-cards', 'gift/card/index', 0, 1, 1, 3, 'el-icon-CreditCard', NOW(), NOW()),
+  (106, 0, '0', '订单管理', 'M', 'GiftOrder', '/redeem-orders', 'gift/order/index', 0, 1, 1, 4, 'el-icon-Document', NOW(), NOW());
 
 INSERT INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES
   (1, 100),

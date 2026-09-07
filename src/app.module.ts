@@ -23,6 +23,7 @@ import { H5CardModule } from "./h5-card/h5-card.module";
 import { H5RedeemModule } from "./h5-redeem/h5-redeem.module";
 import { H5AuthModule } from "./h5-auth/h5-auth.module";
 import { RedeemOrderModule } from "./redeem-order/redeem-order.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
 
 import { LoggerMiddleware } from "./common/middleware/logger.middleware";
 import { RequestContextMiddleware } from "./common/middleware/request-context.middleware";
@@ -85,6 +86,7 @@ const envPath = `.env.${process.env.NODE_ENV || "dev"}`;
     H5RedeemModule,
     H5AuthModule,
     RedeemOrderModule,
+    DashboardModule,
   ],
   controllers: [],
   providers: [
