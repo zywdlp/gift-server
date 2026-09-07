@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, Res, SetMetadata, UseGuards } from "@nestjs/common";
 import type { Response as ExpressResponse } from "express";
+import archiver = require("archiver");
+import QRCode = require("qrcode");
 import * as XLSX from "xlsx";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Log } from "@/common/decorators/log.decorator";
@@ -58,20 +60,43 @@ export class CardSecretController {
   }
 
   @Post(":id/export-qr")
-  @ApiOperation({ summary: "导出二维码数据" })
-  @Log(LogModuleValue.OTHER, ActionTypeValue.EXPORT, "卡密管理-导出二维码")
+  @ApiOperation({ summary: "导出二维码图片" })
+  @Log(LogModuleValue.OTHER, ActionTypeValue.EXPORT, "卡密管理-导出二维码图片")
   @SetMetadata("skipResponseTransform", true)
   async exportQr(@Param("id") id: string, @Res() res: ExpressResponse) {
     const cards = await this.cardSecretService.getCardsForExport(id);
-    this.writeExcel(res, "二维码数据", ["卡号", "二维码Token"], cards.map((card) => [card.cardNo, this.cardSecretService.getQrToken(card)]));
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent("二维码图片.zip")}`);
+    const zip = archiver("zip", { zlib: { level: 9 } });
+    zip.on("error", (error) => res.destroy(error));
+    zip.pipe(res);
+    const manifestRows: string[][] = [];
+    for (const card of cards) {
+      const qrUrl = this.cardSecretService.getQrUrl(card);
+      const image = await QRCode.toBuffer(qrUrl, {
+        type: "png",
+        width: 420,
+        margin: 2,
+        errorCorrectionLevel: "M",
+      });
+      const fileName = `${card.cardNo}.png`;
+      zip.append(image, { name: fileName });
+      manifestRows.push([card.cardNo, qrUrl, fileName]);
+    }
+    zip.append(this.createExcelBuffer("二维码清单", ["卡号", "二维码链接", "图片文件名"], manifestRows), { name: "二维码清单.xlsx" });
+    await zip.finalize();
   }
 
   private writeExcel(res: ExpressResponse, sheetName: string, header: string[], rows: string[][]) {
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([header, ...rows]), sheetName);
-    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    const buffer = this.createExcelBuffer(sheetName, header, rows);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename=${encodeURIComponent(`${sheetName}.xlsx`)}`);
     res.send(buffer);
+  }
+
+  private createExcelBuffer(sheetName: string, header: string[], rows: string[][]) {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([header, ...rows]), sheetName);
+    return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
   }
 }

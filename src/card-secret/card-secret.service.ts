@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { randomBytes } from "crypto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, In, Repository } from "typeorm";
@@ -19,7 +20,8 @@ export class CardSecretService {
     @InjectRepository(CardBatch) private readonly batchRepository: Repository<CardBatch>,
     @InjectRepository(GiftCard) private readonly cardRepository: Repository<GiftCard>,
     @InjectRepository(SysUser) private readonly userRepository: Repository<SysUser>,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly configService: ConfigService
   ) {}
 
   async getPage(query: CardSecretQueryDto) {
@@ -190,6 +192,21 @@ export class CardSecretService {
 
   getQrToken(card: GiftCard) {
     return decryptCardSecret(card.qrTokenCiphertext);
+  }
+
+  getQrUrl(card: GiftCard) {
+    const baseUrl = this.configService.get<string>("H5_PUBLIC_BASE_URL")?.trim().replace(/\/+$/, "");
+    if (!baseUrl) throw new BusinessException("未配置 H5_PUBLIC_BASE_URL，无法生成二维码图片");
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(baseUrl);
+    } catch {
+      throw new BusinessException("H5_PUBLIC_BASE_URL 格式错误，应为 http://IP:端口 或 https://域名");
+    }
+    if (!/^https?:$/.test(parsedUrl.protocol)) {
+      throw new BusinessException("H5_PUBLIC_BASE_URL 仅支持 http 或 https 地址");
+    }
+    return `${baseUrl}/r/${this.getQrToken(card)}`;
   }
 
   private async findBatch(id: string) {
