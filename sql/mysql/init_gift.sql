@@ -1,15 +1,15 @@
 -- 礼品兑换卡系统：全新部署初始化脚本
 --
 -- 用途：仅用于不保留任何历史数据的全新部署。
--- 警告：执行会永久删除 gift_admin 数据库及其中所有数据。
+-- 警告：执行会永久删除 gift_platform 数据库及其中所有数据。
 -- 执行顺序：
 --   1. 执行本脚本，创建当前全部表、管理员、角色和最终菜单；
---   2. 将 .env 的 MYSQL_DB 配置为 gift_admin；
+--   2. 将 .env 的 MYSQL_DB 配置为 gift_platform；
 --   3. 保持 synchronize: false 后启动后端。
 
-DROP DATABASE IF EXISTS `gift_admin`;
-CREATE DATABASE `gift_admin` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `gift_admin`;
+DROP DATABASE IF EXISTS `gift_platform`;
+CREATE DATABASE `gift_platform` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `gift_platform`;
 SET NAMES utf8mb4;
 
 -- 管理员账号与权限所需的基础表。

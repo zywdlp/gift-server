@@ -45,7 +45,8 @@ const envPath = `.env.${process.env.NODE_ENV || "dev"}`;
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [".env", envPath],
+      // 开发、生产环境完全隔离；实际系统环境变量仍可覆盖文件中的同名配置。
+      envFilePath: [envPath],
       load: [typeormConfig, jwtConfig],
     }),
     TypeOrmModule.forRootAsync({
