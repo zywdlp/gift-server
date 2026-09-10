@@ -36,7 +36,11 @@ export class AuthController {
   async login(@Req() req: any, @Body() loginDto: LoginRequestDto) {
     const { captchaCode, captchaId } = loginDto;
     await this.authService.verifyCaptcha(captchaId, captchaCode);
-    return await this.authService.login(loginDto, req.ip || req.socket?.remoteAddress || "unknown");
+    return await this.authService.login(
+      loginDto,
+      req.ip || req.socket?.remoteAddress || "unknown",
+      req.originalUrl || req.url,
+    );
   }
 
   @ApiOperation({ summary: "注销登录" })

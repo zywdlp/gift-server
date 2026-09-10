@@ -10,6 +10,7 @@ import { BusinessException } from "./common/exceptions/business.exception";
 import { ErrorCode } from "./common/enums/error-code.enum";
 import { Logger } from "@nestjs/common";
 import { getUploadRoot, UPLOAD_URL_PREFIX } from "./common/utils/upload-path.util";
+import { resolveRuntimeConfig } from "./config/runtime.config";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
@@ -21,9 +22,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
-  const isProduction = ["prod", "production"].includes(
-    (configService.get<string>("NODE_ENV") || "dev").toLowerCase()
-  );
+  const { isProduction, apiPrefix } = resolveRuntimeConfig();
   if (isProduction && !configService.get<string>("CARD_SECRET_KEY")) {
     throw new Error("生产环境必须配置独立的 CARD_SECRET_KEY");
   }
@@ -32,7 +31,7 @@ async function bootstrap() {
   app.useStaticAssets(getUploadRoot(), { prefix: `${UPLOAD_URL_PREFIX}/` });
 
   // 全局前缀
-  app.setGlobalPrefix("/api/v1");
+  app.setGlobalPrefix(apiPrefix);
 
   // 生产环境仅允许配置的管理端和 H5 域名跨域访问。
   const corsOrigins = (configService.get<string>("CORS_ORIGINS") || "")

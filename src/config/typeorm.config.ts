@@ -5,11 +5,10 @@
  * @Description: 
  */
 import { registerAs } from "@nestjs/config";
+import { resolveRuntimeConfig } from "./runtime.config";
 
 export default registerAs("typeorm", () => {
-  const isProduction = ["prod", "production"].includes(
-    (process.env.NODE_ENV || "dev").toLowerCase()
-  );
+  const { isProduction } = resolveRuntimeConfig();
   const synchronize = process.env.TYPEORM_SYNCHRONIZE === "true";
   if (isProduction && synchronize) {
     throw new Error("[TypeORM Config] 生产环境禁止开启 TYPEORM_SYNCHRONIZE");

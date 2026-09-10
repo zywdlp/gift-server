@@ -33,20 +33,21 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 
 import jwtConfig from "./config/jwt.config";
 import typeormConfig from "./config/typeorm.config";
+import { resolveRuntimeConfig } from "./config/runtime.config";
 import { DataScopeGuard } from "./common/guards/data-scope.guard";
 import { PermissionGuard } from "./common/guards/permission.guard";
 import { DataPermissionInterceptor } from "./common/interceptors/data-permission.interceptor";
 import { initDataPermissionPlugin } from "./common/plugins/data-permission.plugin";
 import { AuditSubscriber } from "./common/subscribers/audit.subscriber";
 
-const envPath = `.env.${process.env.NODE_ENV || "dev"}`;
+const { envFilePath } = resolveRuntimeConfig();
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       // 开发、生产环境完全隔离；实际系统环境变量仍可覆盖文件中的同名配置。
-      envFilePath: [envPath],
+      envFilePath: [envFilePath],
       load: [typeormConfig, jwtConfig],
     }),
     TypeOrmModule.forRootAsync({

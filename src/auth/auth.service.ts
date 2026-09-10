@@ -98,7 +98,7 @@ export class AuthService {
     return result;
   }
 
-  async login(loginDto: LoginRequestDto, ip: string): Promise<LoginResultDto> {
+  async login(loginDto: LoginRequestDto, ip: string, requestUri: string): Promise<LoginResultDto> {
     const { username, password } = loginDto;
     await this.assertLoginAllowed(username, ip);
     const user = await this.validateUser(username, password);
@@ -111,7 +111,7 @@ export class AuthService {
     const result = await this.issueTokens(user);
     this.logService.saveManualLog({
       actionType: ActionTypeValue.LOGIN, operatorId: user.id, operatorName: user.username,
-      requestMethod: "POST", requestUri: "/api/v1/auth/login", status: 1,
+      requestMethod: "POST", requestUri, status: 1,
     }).catch(() => {});
     return result;
   }
